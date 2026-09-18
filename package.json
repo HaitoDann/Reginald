@@ -1,0 +1,26 @@
+{
+  "name": "reginald",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reginald — bot Discord officiel de PlaZma Esport, interface Discord d'ARCHI (Firestore).",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "node --import tsx --watch src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test src/**/*.test.ts"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "firebase-admin": "^12.7.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "@types/node": "^20.16.0"
+  }
+}

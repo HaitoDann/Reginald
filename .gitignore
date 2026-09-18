@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+
+# Secrets — jamais dans Git
+.env
+.env.*
+!.env.example
+serviceAccount*.json
+*firebase-adminsdk*.json

@@ -1,0 +1,27 @@
+[Unit]
+Description=Reginald — bot Discord PlaZma (interface ARCHI/Firestore)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/reginald
+# Secrets fournis hors Git : fichier .env non versionné + service account JSON.
+EnvironmentFile=/opt/reginald/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+# Redémarrage robuste face aux coupures réseau, sans boucle folle.
+StartLimitIntervalSec=60
+StartLimitBurst=10
+User=reginald
+Group=reginald
+# Durcissement de base.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/reginald
+
+[Install]
+WantedBy=multi-user.target
