@@ -1,10 +1,16 @@
 import { DAYS, EMOJI_BY_DAY, type Day } from './days.js';
-import type { Player } from './roster.js';
 import { isYes, type WeekAvailability } from './availability.js';
 import { weekLabel } from './weeklabel.js';
 
 /** Effectif complet requis pour un créneau jouable. */
 const FULL = 5;
+
+export interface RosterSets {
+  /** playerId des 5 titulaires (ids de slot ARCHI). */
+  starterIds: string[];
+  /** playerId des remplaçants liés (subs). */
+  subIds: string[];
+}
 
 export interface DaySummary {
   day: Day;
@@ -14,19 +20,9 @@ export interface DaySummary {
   needsSub: boolean; // 5 atteint seulement grâce à un/des remplaçant(s)
 }
 
-export function summarizeDay(
-  day: Day,
-  players: Player[],
-  avail: WeekAvailability,
-): DaySummary {
-  let startersYes = 0;
-  let subsYes = 0;
-  for (const p of players) {
-    if (p.roleKey === 'coach') continue; // le coach ne compte pas dans le 5/5
-    if (!isYes(avail[p.id], day)) continue;
-    if (p.starter) startersYes += 1;
-    else subsYes += 1;
-  }
+export function summarizeDay(day: Day, avail: WeekAvailability, sets: RosterSets): DaySummary {
+  const startersYes = sets.starterIds.filter((id) => isYes(avail[id], day)).length;
+  const subsYes = sets.subIds.filter((id) => isYes(avail[id], day)).length;
   const total = startersYes + subsYes;
   const playable = total >= FULL;
   const needsSub = playable && startersYes < FULL;
@@ -42,19 +38,17 @@ export function summarizeDay(
  */
 export function renderAvailabilityMessage(
   week: string,
-  players: Player[],
   avail: WeekAvailability,
+  sets: RosterSets,
 ): string {
   const lines: string[] = [];
   lines.push(`**📅 Disponibilités — ${weekLabel(week)}**`);
   lines.push('');
   lines.push('Réagis avec l’emoji de chaque jour où tu es dispo (créneau 21h) :');
-  for (const day of DAYS) {
-    lines.push(`${EMOJI_BY_DAY[day]} ${day}`);
-  }
+  for (const day of DAYS) lines.push(`${EMOJI_BY_DAY[day]} ${day}`);
   lines.push('');
 
-  const summaries = DAYS.map((d) => summarizeDay(d, players, avail));
+  const summaries = DAYS.map((d) => summarizeDay(d, avail, sets));
   const playable = summaries.filter((s) => s.playable);
 
   lines.push('__Créneaux 5/5__');

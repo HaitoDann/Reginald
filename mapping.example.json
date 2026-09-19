@@ -1,8 +1,12 @@
-[
-  { "discordId": "391342015285166080", "playerId": "boulou",  "pseudo": "boulou" },
-  { "discordId": "485543126610477000", "playerId": "zugu",    "pseudo": "naiko"  },
-  { "discordId": "338772758869704000", "playerId": "lakrael", "pseudo": "lakrael" },
-  { "discordId": "523176453282725000", "playerId": "ke1do",   "pseudo": "keido"  },
-  { "discordId": "205008239866150000", "playerId": "sayro",   "pseudo": "joordy" },
-  { "discordId": "316277443856039000", "playerId": "haito",   "pseudo": "haito"  }
-]
+{
+  "starters": {
+    "top":     { "discordId": "391342015285166091", "pseudo": "boulou" },
+    "jungle":  { "discordId": "485543126610477056", "pseudo": "naiko" },
+    "mid":     { "discordId": "338772758869704704", "pseudo": "lakrael" },
+    "adc":     { "discordId": "REMPLACER_PAR_ID_KEIDO", "pseudo": "ke1d0" },
+    "support": { "discordId": "205008239866150912", "pseudo": "joordy" }
+  },
+  "subs": [
+    { "discordId": "316277443856039936", "playerId": "haito", "pseudo": "REMPLACER_PAR_PSEUDO_ARCHI_HAITO" }
+  ]
+}

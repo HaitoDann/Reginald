@@ -15,9 +15,9 @@ import { log } from './logger.js';
 import { currentWeekValue } from './week.js';
 import { dayForEmoji, REACTION_EMOJIS } from './days.js';
 import { getPlayers } from './roster.js';
-import { resolveDiscordUser } from './links.js';
+import { resolveDiscordUser, getLinks } from './links.js';
 import { readWeek, setAvailable, clearAvailable } from './availability.js';
-import { renderAvailabilityMessage } from './message.js';
+import { renderAvailabilityMessage, type RosterSets } from './message.js';
 import { getAvailabilityMessageRef, setAvailabilityMessageRef } from './state.js';
 import { firestore } from './firebase.js';
 
@@ -36,8 +36,19 @@ export function createClient(): Client {
 
 /** (Re)construit le contenu du message pour la semaine courante. */
 async function buildContent(week: string): Promise<string> {
-  const [players, avail] = await Promise.all([getPlayers(), readWeek(week)]);
-  return renderAvailabilityMessage(week, players, avail);
+  const [players, links, avail] = await Promise.all([getPlayers(), getLinks(), readWeek(week)]);
+  const starterIds = players.filter((p) => p.starter).map((p) => p.id);
+  const starterSet = new Set(starterIds);
+  // Un sub = joueur lié dont le playerId n'est ni un titulaire ni le coach.
+  const subIds = [
+    ...new Set(
+      Object.values(links)
+        .map((l) => l.playerId)
+        .filter((id) => !starterSet.has(id) && id !== 'coach'),
+    ),
+  ];
+  const sets: RosterSets = { starterIds, subIds };
+  return renderAvailabilityMessage(week, avail, sets);
 }
 
 /**
