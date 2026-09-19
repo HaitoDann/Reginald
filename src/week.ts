@@ -47,3 +47,38 @@ export function weekValue(date: Date = new Date()): string {
 }
 
 export const currentWeekValue = (): string => weekValue(new Date());
+
+// ---- Semaine « active » (publication anticipée le samedi) ----
+// Le message d'une semaine est publié le SAMEDI 08:00 (Paris) du week-end
+// précédent, pour laisser le temps aux joueurs de répondre. Donc du samedi 08h
+// au dimanche soir, la semaine active est la semaine SUIVANTE.
+export const ROLL_WEEKDAY = 6; // 0=dim … 6=sam
+export const ROLL_HOUR = 8; // 08:00 heure de Paris
+
+/** Jour de la semaine (0=dim..6=sam) et heure (0-23) en heure de Paris. */
+function parisWeekdayHour(date: Date): { weekday: number; hour: number } {
+  const { year, month, day } = parisYMD(date);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+  const hour = Number(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: PARIS,
+      hour: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date).find((p) => p.type === 'hour')?.value,
+  );
+  return { weekday, hour };
+}
+
+/**
+ * Clé de la semaine dont Reginald doit afficher le message à l'instant donné.
+ * - Samedi ≥ 08:00 (Paris) ou dimanche → la semaine suivante.
+ * - Sinon → la semaine courante.
+ * Idempotent : appelé en boucle, il ne « bascule » qu'au bon moment.
+ */
+export function activeWeekValue(now: Date = new Date()): string {
+  const { weekday, hour } = parisWeekdayHour(now);
+  const roll = (weekday === ROLL_WEEKDAY && hour >= ROLL_HOUR) || weekday === 0;
+  if (!roll) return weekValue(now);
+  // On saute franchement dans la semaine suivante (robuste aux bords/DST).
+  return weekValue(new Date(now.getTime() + 3 * 86400000));
+}

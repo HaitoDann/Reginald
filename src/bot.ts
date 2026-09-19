@@ -12,7 +12,7 @@ import {
 } from 'discord.js';
 import type { Config } from './config.js';
 import { log } from './logger.js';
-import { currentWeekValue } from './week.js';
+import { activeWeekValue } from './week.js';
 import { dayForEmoji, REACTION_EMOJIS } from './days.js';
 import { getPlayers } from './roster.js';
 import { resolveDiscordUser, getLinks } from './links.js';
@@ -52,11 +52,10 @@ async function buildContent(week: string, config: Config): Promise<string> {
 }
 
 /**
- * Retrouve (ou publie) le message hebdo de la semaine courante, et garantit
+ * Retrouve (ou publie) le message hebdo pour la semaine donnée, et garantit
  * la présence des 7 réactions. Idempotent → survit aux redémarrages.
  */
-async function ensureWeeklyMessage(client: Client, config: Config): Promise<Message> {
-  const week = currentWeekValue();
+async function ensureWeeklyMessage(client: Client, config: Config, week: string): Promise<Message> {
   const channel = (await client.channels.fetch(config.availabilityChannelId)) as TextChannel | null;
   if (!channel || !channel.isTextBased()) {
     throw new Error(`Salon introuvable ou non textuel : ${config.availabilityChannelId}`);
@@ -99,16 +98,15 @@ async function ensureReactions(msg: Message): Promise<void> {
   }
 }
 
-/** Édite le message courant avec l'état à jour des disponibilités. */
+/** Édite le message actif (celui référencé dans l'état) avec les dispos à jour. */
 async function refresh(client: Client, config: Config): Promise<void> {
   try {
-    const week = currentWeekValue();
     const ref = await getAvailabilityMessageRef();
-    if (!ref || ref.week !== week) return; // rien à rafraîchir (nouvelle semaine gérée ailleurs)
+    if (!ref) return;
     const channel = (await client.channels.fetch(ref.channelId)) as TextChannel | null;
     if (!channel) return;
     const msg = await channel.messages.fetch(ref.messageId);
-    await msg.edit({ content: await buildContent(week, config), allowedMentions: { parse: [] } });
+    await msg.edit({ content: await buildContent(ref.week, config), allowedMentions: { parse: [] } });
   } catch (e) {
     log.warn('Refresh message échoué', { err: String(e) });
   }
@@ -137,7 +135,7 @@ async function handleReaction(
       return;
     }
 
-    const week = ref.week || currentWeekValue();
+    const week = ref.week || activeWeekValue();
     if (add) await setAvailable(week, link, day);
     else await clearAvailable(week, link, day);
 
@@ -147,21 +145,42 @@ async function handleReaction(
   }
 }
 
-/**
- * Écoute les changements de dispos côté ARCHI (site web) pour rafraîchir le
- * message Discord en direct — le bot reste la source d'affichage unique.
- */
-function watchAvailability(client: Client, config: Config): () => void {
-  const week = currentWeekValue();
-  return firestore()
+// --- Ordonnancement de la semaine active + veille des dispos ARCHI ---
+// Un tick périodique idempotent (ci-dessous) suffit à publier le message du
+// samedi 08:00 : quand `activeWeekValue()` bascule sur la semaine suivante,
+// le tick publie le nouveau message une seule fois, puis se contente de
+// l'éditer. Robuste aux redémarrages, sans timer fragile.
+const TICK_MS = 5 * 60 * 1000; // 5 min
+
+let watchedWeek: string | null = null;
+let unwatch: (() => void) | null = null;
+
+/** (Re)cible l'écoute Firestore des dispos sur la semaine active. */
+function watchAvailability(client: Client, config: Config, week: string): void {
+  if (watchedWeek === week && unwatch) return;
+  if (unwatch) unwatch();
+  watchedWeek = week;
+  unwatch = firestore()
     .collection('plazma-availability')
     .where('week', '==', week)
     .onSnapshot(
-      () => {
-        void refresh(client, config);
-      },
+      () => void refresh(client, config),
       (err) => log.warn('onSnapshot dispo', { err: String(err) }),
     );
+}
+
+/**
+ * Vérifie l'état attendu et le met en place : message publié pour la semaine
+ * active, réactions présentes, écoute des dispos ciblée sur cette semaine.
+ */
+async function tick(client: Client, config: Config): Promise<void> {
+  try {
+    const week = activeWeekValue();
+    await ensureWeeklyMessage(client, config, week);
+    watchAvailability(client, config, week);
+  } catch (e) {
+    log.error('Tick hebdo échoué', { err: String(e) });
+  }
 }
 
 export async function start(config: Config): Promise<Client> {
@@ -169,12 +188,8 @@ export async function start(config: Config): Promise<Client> {
 
   client.once(Events.ClientReady, async (c) => {
     log.info('Reginald connecté', { user: c.user.tag });
-    try {
-      await ensureWeeklyMessage(client, config);
-      watchAvailability(client, config);
-    } catch (e) {
-      log.error('Initialisation post-ready échouée', { err: String(e) });
-    }
+    await tick(client, config);
+    setInterval(() => void tick(client, config), TICK_MS);
   });
 
   client.on(Events.MessageReactionAdd, (r, u) => handleReaction(client, config, r, u, true));

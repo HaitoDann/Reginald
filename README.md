@@ -17,6 +17,11 @@ Chaque semaine, Reginald publie un message de disponibilités :
 🟦 Vendredi   🟪 Samedi   ⬜ Dimanche
 ```
 
+Le message est publié automatiquement **chaque samedi à 08:00 (Europe/Paris)**
+pour la **semaine suivante**, afin de laisser le week-end aux joueurs pour
+répondre. (Bascule gérée par `activeWeekValue` + un tick idempotent ; aucun
+cron externe requis, robuste aux redémarrages.)
+
 Les joueurs réagissent avec l’emoji des jours où ils sont dispos. Reginald :
 
 - détecte les réactions ajoutées/retirées ;
