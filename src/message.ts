@@ -1,6 +1,11 @@
 import { DAYS, EMOJI_BY_DAY, type Day } from './days.js';
 import { isYes, type WeekAvailability } from './availability.js';
-import { weekLabel } from './weeklabel.js';
+import { frenchWeekRange } from './weeklabel.js';
+
+export interface MessageOptions {
+  /** ID du rôle Discord à mentionner en tête (ex. "Joueur Titulaire"), optionnel. */
+  mentionRoleId?: string;
+}
 
 /** Effectif complet requis pour un créneau jouable. */
 const FULL = 5;
@@ -40,28 +45,29 @@ export function renderAvailabilityMessage(
   week: string,
   avail: WeekAvailability,
   sets: RosterSets,
+  opts: MessageOptions = {},
 ): string {
   const lines: string[] = [];
-  lines.push(`**📅 Disponibilités — ${weekLabel(week)}**`);
+  if (opts.mentionRoleId) lines.push(`<@&${opts.mentionRoleId}>`);
+  lines.push('📅 **Disponibilités de la semaine**');
+  lines.push('Merci de réagir en fonction de vos jours de présence prévus !');
   lines.push('');
-  lines.push('Réagis avec l’emoji de chaque jour où tu es dispo (créneau 21h) :');
+  lines.push(`📆 ${frenchWeekRange(week)}`);
+  lines.push('');
   for (const day of DAYS) lines.push(`${EMOJI_BY_DAY[day]} ${day}`);
-  lines.push('');
 
-  const summaries = DAYS.map((d) => summarizeDay(d, avail, sets));
-  const playable = summaries.filter((s) => s.playable);
-
-  lines.push('__Créneaux 5/5__');
-  if (playable.length === 0) {
-    lines.push('_Aucun créneau à 5/5 pour l’instant._');
-  } else {
+  // Récap 5/5 ajouté seulement s'il existe au moins un créneau complet, pour
+  // que le message reste épuré tant qu'aucun jour n'est à 5/5.
+  const playable = DAYS.map((d) => summarizeDay(d, avail, sets)).filter((s) => s.playable);
+  if (playable.length > 0) {
+    lines.push('');
+    lines.push('__Créneaux 5/5__');
     for (const s of playable) {
       const tag = s.needsSub ? ` ⚠️ avec un sub (${s.startersYes}/5 titulaires)` : '';
       lines.push(`${EMOJI_BY_DAY[s.day]} **${s.day}** — 5/5${tag}`);
     }
+    lines.push('_5/5 = créneau possible, pas un scrim confirmé (annoncé seulement s’il est planifié dans ARCHI)._');
   }
-  lines.push('');
-  lines.push('_5/5 = créneau possible, pas un scrim confirmé. Un scrim n’est annoncé que s’il est planifié dans ARCHI._');
 
   return lines.join('\n');
 }

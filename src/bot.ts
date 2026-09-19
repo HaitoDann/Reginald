@@ -35,7 +35,7 @@ export function createClient(): Client {
 }
 
 /** (Re)construit le contenu du message pour la semaine courante. */
-async function buildContent(week: string): Promise<string> {
+async function buildContent(week: string, config: Config): Promise<string> {
   const [players, links, avail] = await Promise.all([getPlayers(), getLinks(), readWeek(week)]);
   const starterIds = players.filter((p) => p.starter).map((p) => p.id);
   const starterSet = new Set(starterIds);
@@ -48,7 +48,7 @@ async function buildContent(week: string): Promise<string> {
     ),
   ];
   const sets: RosterSets = { starterIds, subIds };
-  return renderAvailabilityMessage(week, avail, sets);
+  return renderAvailabilityMessage(week, avail, sets, { mentionRoleId: config.mentionRoleId });
 }
 
 /**
@@ -66,7 +66,7 @@ async function ensureWeeklyMessage(client: Client, config: Config): Promise<Mess
   if (ref && ref.week === week && ref.channelId === channel.id) {
     try {
       const existing = await channel.messages.fetch(ref.messageId);
-      await existing.edit(await buildContent(week));
+      await existing.edit({ content: await buildContent(week, config), allowedMentions: { parse: [] } });
       await ensureReactions(existing);
       log.info('Message hebdo réutilisé', { week, messageId: existing.id });
       return existing;
@@ -75,7 +75,11 @@ async function ensureWeeklyMessage(client: Client, config: Config): Promise<Mess
     }
   }
 
-  const msg = await channel.send(await buildContent(week));
+  const msg = await channel.send({
+    content: await buildContent(week, config),
+    // Ping le rôle une seule fois, à la publication (les éditions ne re-pingent pas).
+    allowedMentions: config.mentionRoleId ? { roles: [config.mentionRoleId] } : { parse: [] },
+  });
   await ensureReactions(msg);
   await setAvailabilityMessageRef({ week, channelId: channel.id, messageId: msg.id });
   log.info('Message hebdo publié', { week, messageId: msg.id });
@@ -104,7 +108,7 @@ async function refresh(client: Client, config: Config): Promise<void> {
     const channel = (await client.channels.fetch(ref.channelId)) as TextChannel | null;
     if (!channel) return;
     const msg = await channel.messages.fetch(ref.messageId);
-    await msg.edit(await buildContent(week));
+    await msg.edit({ content: await buildContent(week, config), allowedMentions: { parse: [] } });
   } catch (e) {
     log.warn('Refresh message échoué', { err: String(e) });
   }

@@ -8,6 +8,7 @@ export interface Config {
   availabilityChannelId: string;
   firebaseServiceAccountPath: string | undefined;
   firebaseProjectId: string | undefined;
+  mentionRoleId: string | undefined;
   timezone: string;
 }
 
@@ -33,6 +34,7 @@ export function loadConfig(): Config {
     availabilityChannelId: required('DISCORD_AVAILABILITY_CHANNEL_ID'),
     firebaseServiceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH?.trim() || undefined,
     firebaseProjectId: process.env.FIREBASE_PROJECT_ID?.trim() || undefined,
+    mentionRoleId: process.env.DISCORD_MENTION_ROLE_ID?.trim() || undefined,
     timezone,
   };
 }
