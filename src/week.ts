@@ -23,6 +23,32 @@ function parisYMD(date: Date): { year: number; month: number; day: number } {
   return { year: get('year'), month: get('month'), day: get('day') };
 }
 
+/** Date civile de Paris au format YYYY-MM-DD (comparable aux champs date ARCHI). */
+export function parisDateStr(date: Date = new Date()): string {
+  const { year, month, day } = parisYMD(date);
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+/** Heure (0-23) et minute en heure de Paris. */
+export function parisClock(date: Date = new Date()): { hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: PARIS,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+  return { hour: get('hour'), minute: get('minute') };
+}
+
+/** Nom de jour français (Lundi…Dimanche) pour une date, en heure de Paris. */
+export function parisDayName(date: Date = new Date()): string {
+  const { year, month, day } = parisYMD(date);
+  const weekday = new Date(Date.UTC(year, month - 1, day)).getUTCDay(); // 0=dim..6=sam
+  const DAYS_FR = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+  return DAYS_FR[(weekday + 6) % 7];
+}
+
 /**
  * Numéro de semaine ISO — identique à `getWeekNum` d'ARCHI.
  * (Semaine ISO 8601 : la semaine contenant le jeudi.)

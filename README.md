@@ -33,6 +33,25 @@ Les joueurs réagissent avec l’emoji des jours où ils sont dispos. Reginald :
 > **5/5 = créneau possible, pas un scrim.** Un scrim n’est annoncé que s’il
 > existe réellement dans le Planning d’ARCHI.
 
+## Annonces & saisie de résultat (salon `#reginald`)
+
+En plus des dispos, Reginald poste dans un salon d’annonces
+(`DISCORD_ANNOUNCE_CHANNEL_ID`, défaut = salon dispo) :
+
+- **Événements du soir** — chaque jour à **14:00 (Paris)**, la liste des
+  créneaux `scrim` / `match` / `flexq` planifiés le jour même (lu dans
+  `plazma/schedule-*`).
+- **Saisie de résultat** — après minuit, si la veille comportait un scrim/match,
+  un rappel invite à renseigner le score via la commande **`/resultat`**
+  (adversaire + V/D par game) → écrit dans `plazma-scrims` au format ARCHI.
+- **Dates clés** — rappel à **J-7** et **J-1** des échéances saisies dans ARCHI
+  (`plazma/dashboard.objectives[].deadline` + `nextEventDate`).
+- **Satisfaction** — relance automatique tous les **90 jours** pour remplir le
+  questionnaire.
+
+> La commande `/resultat` nécessite d’avoir invité le bot avec le scope
+> **`applications.commands`** (en plus de `bot`).
+
 Les remplaçants comptent dans le 5/5 ; si le créneau n’atteint 5 que grâce à un
 sub, le message le signale (`⚠️ avec un sub`).
 

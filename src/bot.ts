@@ -20,6 +20,8 @@ import { readWeek, setAvailable, clearAvailable } from './availability.js';
 import { renderAvailabilityMessage, type RosterSets } from './message.js';
 import { getAvailabilityMessageRef, setAvailabilityMessageRef } from './state.js';
 import { firestore } from './firebase.js';
+import { runDailyJobs } from './daily.js';
+import { registerCommands, handleInteraction } from './commands.js';
 
 export function createClient(): Client {
   return new Client({
@@ -181,6 +183,8 @@ async function tick(client: Client, config: Config): Promise<void> {
   } catch (e) {
     log.error('Tick hebdo échoué', { err: String(e) });
   }
+  // Jobs quotidiens (annonces événements, dates clés, rappel résultat…).
+  await runDailyJobs(client, config);
 }
 
 export async function start(config: Config): Promise<Client> {
@@ -188,9 +192,12 @@ export async function start(config: Config): Promise<Client> {
 
   client.once(Events.ClientReady, async (c) => {
     log.info('Reginald connecté', { user: c.user.tag });
+    await registerCommands(client, config.guildId);
     await tick(client, config);
     setInterval(() => void tick(client, config), TICK_MS);
   });
+
+  client.on(Events.InteractionCreate, (i) => void handleInteraction(i));
 
   client.on(Events.MessageReactionAdd, (r, u) => handleReaction(client, config, r, u, true));
   client.on(Events.MessageReactionRemove, (r, u) => handleReaction(client, config, r, u, false));
